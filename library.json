@@ -11,7 +11,7 @@
   "dependencies":
 [
   {
-    "name": "Define_Debug_Mode",
+    "name": "StringEncryption",
     "version": "https://github.com/derAndiofficial/StringEncryption.git"
   }
 ],
