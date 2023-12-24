@@ -10,7 +10,7 @@
 
 
 
-void MessageEncoder::setEncoding (uint8_t SenderID, u_int16_t maxMessageSize, StringEncryption *Encrypter) {
+void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, StringEncryption *Encrypter) {
   AES = Encrypter;
   _SenderID = SenderID;
   _maxEncodedLength = maxMessageSize;
