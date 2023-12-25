@@ -28,7 +28,7 @@ typedef struct {
 class MessageEncoder {
 public:
 
-  void setEncoding (uint8_t SenderID, uint16_t maxMessageSize, StringEncryption *Encrypter);
+  void setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
   
   bool Encode(encoding_inputs* Input, String* Message);
   bool Decode(String* Message, decoding_outputs* Output);
@@ -119,7 +119,7 @@ private:
   message_components Decoding_Data;
 
 
-  StringEncryption *AES;
+  StringEncryption AES;
   uint8_t _SenderID;
   uint16_t _maxEncodedLength;
 

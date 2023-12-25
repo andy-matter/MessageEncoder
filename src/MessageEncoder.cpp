@@ -10,8 +10,8 @@
 
 
 
-void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, StringEncryption *Encrypter) {
-  AES = Encrypter;
+void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey) {
+  AES.setup(EnctyptionKey, '!');
   _SenderID = SenderID;
   _maxEncodedLength = maxMessageSize;
 }
@@ -20,7 +20,7 @@ void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, Str
 bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 
   // Copy input to encoding_data
-  Encoding_Data.HeaderBlock.Components.SenderID = _SenderID + 1;
+  Encoding_Data.HeaderBlock.Components.SenderID = _SenderID + 1;  // to avoid \0 bytes
   Encoding_Data.HeaderBlock.Components.MessageID = Input->MessageID + 1;
   Encoding_Data.HeaderBlock.Components.Flag.Encrypted = Input->Encrypt;
   Encoding_Data.HeaderBlock.Components.Flag.needACK = Input->needACK;
@@ -202,19 +202,19 @@ void MessageEncoder::constructDataBlock() {
 
 
   // Put Data and CRC together
-  String DataBlock = "";
-  DataBlock += Encoding_Data.DataBlock.Components.ClearText;
-  DataBlock += (char)Encoding_Data.DataBlock.Components.DataCRC.LowerCRC_Byte;
-  DataBlock += (char)Encoding_Data.DataBlock.Components.DataCRC.UpperCRC_Byte;
+  Encoding_Data.DataBlock.Components.ClearText += (char)Encoding_Data.DataBlock.Components.DataCRC.LowerCRC_Byte;
+  Encoding_Data.DataBlock.Components.ClearText += (char)Encoding_Data.DataBlock.Components.DataCRC.UpperCRC_Byte;
 
 
   // Encrypt if needed
   if (Encoding_Data.HeaderBlock.Components.Flag.Encrypted) {
-    DataBlock = AES->EncryptString(DataBlock);
+    AES.EncryptString(Encoding_Data.DataBlock.Components.ClearText, Encoding_Data.DataBlock.DataBlock_String);
+  }
+  else {
+    Encoding_Data.DataBlock.DataBlock_String = Encoding_Data.DataBlock.Components.ClearText;
   }
 
 
-  Encoding_Data.DataBlock.DataBlock_String = DataBlock;
   Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength = Encoding_Data.DataBlock.DataBlock_String.length() + 32769;  // 32769 to avoid \0 bytes in Message String
 }
 
@@ -229,24 +229,25 @@ bool MessageEncoder::destructDataBlock() {
 
   // Decrypt if needed
   if (Decoding_Data.HeaderBlock.Components.Flag.Encrypted) {
-    Decoding_Data.DataBlock.DataBlock_String = AES->DecryptString(Decoding_Data.DataBlock.DataBlock_String);
+    AES.DecryptString(Decoding_Data.DataBlock.DataBlock_String, Decoding_Data.DataBlock.Components.ClearText);
+  }
+  else {
+    Decoding_Data.DataBlock.Components.ClearText = Decoding_Data.DataBlock.DataBlock_String;
   }
 
 
-  int lastIndex = Decoding_Data.DataBlock.DataBlock_String.length() - 1;
+  int lastIndex = Decoding_Data.DataBlock.Components.ClearText.length() - 1;
 
-  Decoding_Data.DataBlock.Components.DataCRC.LowerCRC_Byte = Decoding_Data.DataBlock.DataBlock_String.charAt(lastIndex - 1);
-  Decoding_Data.DataBlock.Components.DataCRC.UpperCRC_Byte = Decoding_Data.DataBlock.DataBlock_String.charAt(lastIndex);
+  Decoding_Data.DataBlock.Components.DataCRC.LowerCRC_Byte = Decoding_Data.DataBlock.Components.ClearText.charAt(lastIndex - 1);
+  Decoding_Data.DataBlock.Components.DataCRC.UpperCRC_Byte = Decoding_Data.DataBlock.Components.ClearText.charAt(lastIndex);
 
-  Decoding_Data.DataBlock.DataBlock_String.remove(lastIndex - 1);
+  Decoding_Data.DataBlock.Components.ClearText.remove(lastIndex - 1);
 
 
-  if (Decoding_Data.DataBlock.Components.DataCRC.DataCRC != CRC16(Decoding_Data.DataBlock.DataBlock_String)) {  // Check received CRC against calculated CRC
+  if (Decoding_Data.DataBlock.Components.DataCRC.DataCRC != CRC16(Decoding_Data.DataBlock.Components.ClearText)) {  // Check received CRC against calculated CRC
     return false;
   }
 
-
-  Decoding_Data.DataBlock.Components.ClearText = Decoding_Data.DataBlock.DataBlock_String;
 
   return true;
 }
