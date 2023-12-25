@@ -129,13 +129,13 @@ private:
   void constructHeaderBlock();
   bool destructHeaderBlock(); // return crc ok
 
-  uint8_t CRC8 (String input);
+  uint8_t CRC8 (const String &input);
 
 
   void constructDataBlock();
   bool destructDataBlock();   // return crc ok
 
-  uint16_t CRC16 (String input);
+  uint16_t CRC16 (const String &input);
 
 
   bool splitMessage();

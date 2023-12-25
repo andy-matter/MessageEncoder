@@ -20,8 +20,8 @@ void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, Str
 bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 
   // Copy input to encoding_data
-  Encoding_Data.HeaderBlock.Components.SenderID = _SenderID;
-  Encoding_Data.HeaderBlock.Components.MessageID = Input->MessageID;
+  Encoding_Data.HeaderBlock.Components.SenderID = _SenderID + 1;
+  Encoding_Data.HeaderBlock.Components.MessageID = Input->MessageID + 1;
   Encoding_Data.HeaderBlock.Components.Flag.Encrypted = Input->Encrypt;
   Encoding_Data.HeaderBlock.Components.Flag.needACK = Input->needACK;
   Encoding_Data.HeaderBlock.Components.Flag.isACK = Input->isACK;
@@ -32,28 +32,27 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 
   constructHeaderBlock();  // Create Header
 
+
   // Assemble the Message
-  String Msg = "";
-  Msg += char(2);
-  Msg += char(13);
-  Msg += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 6 Bytes
-  Msg += Encoding_Data.DataBlock.DataBlock_String;  // min 16 Bytes
-  Msg += char(3);
-  Msg += char(13);
+  Encoding_Data.CompleteMessage = "";
+  Encoding_Data.CompleteMessage += char(2);
+  Encoding_Data.CompleteMessage += char(13);
+  Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 6 Bytes
+  Encoding_Data.CompleteMessage += Encoding_Data.DataBlock.DataBlock_String;  // min 16 Bytes
+  Encoding_Data.CompleteMessage += char(3);
+  Encoding_Data.CompleteMessage += char(13);
 
-  Encoding_Data.CompleteMessage = Msg;
 
+  *Message = "";
 
   // Check max message length
-  if (Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength + 10  >  _maxEncodedLength) {
-    *Message = "";
+  if ((Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength - 32769) + 10  >  _maxEncodedLength) {
     return false;
   }
 
 
   *Message = Encoding_Data.CompleteMessage;
   return true;
-
 }
 
 
@@ -73,8 +72,8 @@ bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
     return false;
   }
   
-  Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID;
-  Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID;
+  Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID - 1;
+  Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID - 1;
   Output->wasEncrypted = Decoding_Data.HeaderBlock.Components.Flag.Encrypted;
   Output->needACK = Decoding_Data.HeaderBlock.Components.Flag.needACK;
   Output->isACK = Decoding_Data.HeaderBlock.Components.Flag.isACK;
@@ -88,55 +87,45 @@ bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
 
 
 
-uint8_t MessageEncoder::CRC8(String input) {
-    // Pre-calculated CRC table for CRC-8 (polynomial 0x07)
-    static const uint8_t crcTable[] = {
-        0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
-        0x38, 0x3F, 0x36, 0x31, 0x24, 0x23, 0x2A, 0x2D,
-        0x70, 0x77, 0x7E, 0x79, 0x6C, 0x6B, 0x62, 0x65,
-        0x48, 0x4F, 0x46, 0x41, 0x54, 0x53, 0x5A, 0x5D,
-        0xE0, 0xE7, 0xEE, 0xE9, 0xFC, 0xFB, 0xF2, 0xF5,
-        0xD8, 0xDF, 0xD6, 0xD1, 0xC4, 0xC3, 0xCA, 0xCD,
-        0x90, 0x97, 0x9E, 0x99, 0x8C, 0x8B, 0x82, 0x85,
-        0xA8, 0xAF, 0xA6, 0xA1, 0xB4, 0xB3, 0xBA, 0xBD,
-    };
+uint8_t MessageEncoder::CRC8(const String &input) {
 
-    uint8_t crc = 0;
-    for (char ch : input) {
-        crc = crcTable[crc ^ static_cast<uint8_t>(ch)];
+  uint8_t crc = 0xFF; // Initial value, can be modified based on your requirements
+
+  for (size_t i = 0; i < input.length(); ++i) {
+    crc ^= input[i];
+
+    for (int j = 0; j < 8; ++j) {
+      if (crc & 0x01) {
+        crc = (crc >> 1) ^ 0x8C; // 0x8C is the CRC polynomial, can be modified
+      } else {
+        crc >>= 1;
+      }
     }
+  }
 
-    return crc;
+  // Ensure the CRC value is not 0
+  return (crc == 0) ? 0x01 : crc;
 }
 
 
-uint16_t MessageEncoder::CRC16(String input) {
-    // Pre-calculated CRC table for CRC-16 (polynomial 0x8005)
-    static const uint16_t crcTable[] = {
-        0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
-        0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
-        0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
-        0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
-        0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
-        0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
-        0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
-        0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
-        0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
-        0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
-        0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
-        0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
-        0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
-        0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
-        0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
-        0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
-    };
+uint16_t MessageEncoder::CRC16(const String &input) {
 
-    uint16_t crc = 0xFFFF;
-    for (char ch : input) {
-        crc = (crc >> 8) ^ crcTable[(crc & 0xFF) ^ static_cast<uint8_t>(ch)];
+  uint16_t crc = 0xFFFF; // Initial value, can be modified based on your requirements
+
+  for (size_t i = 0; i < input.length(); ++i) {
+    crc ^= (uint16_t)input[i] << 8;
+
+    for (int j = 0; j < 8; ++j) {
+      if (crc & 0x8000) {
+        crc = (crc << 1) ^ 0x1021; // 0x1021 is the CRC polynomial (CCITT standard), can be modified
+      } else {
+        crc <<= 1;
+      }
     }
+  }
 
-    return crc;
+  // Ensure the CRC value is not 0
+  return (crc == 0) ? 0x0001 : crc;
 }
 
 
@@ -144,7 +133,7 @@ uint16_t MessageEncoder::CRC16(String input) {
 
 void MessageEncoder::constructHeaderBlock() {
 
-  Encoding_Data.HeaderBlock.Components.Flag.Bit8 = true; // to avoid the flag byte from beeing \0
+  Encoding_Data.HeaderBlock.Components.Flag.Bit7 = true; // to avoid the flag byte from beeing \0
 
   // Single bytes to Byte-array
   uint8_t HeaderBytes[5] = { };
@@ -161,7 +150,7 @@ void MessageEncoder::constructHeaderBlock() {
   }
 
   // Calculate CRC
-  Encoding_Data.HeaderBlock.Components.HeaderCRC = CRC8(HeaderString);  
+  Encoding_Data.HeaderBlock.Components.HeaderCRC = CRC8(HeaderString);
 
   // Add CRC to String
   HeaderString += (char)Encoding_Data.HeaderBlock.Components.HeaderCRC;
@@ -226,14 +215,14 @@ void MessageEncoder::constructDataBlock() {
 
 
   Encoding_Data.DataBlock.DataBlock_String = DataBlock;
-  Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength = Encoding_Data.DataBlock.DataBlock_String.length();
+  Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength = Encoding_Data.DataBlock.DataBlock_String.length() + 32769;  // 32769 to avoid \0 bytes in Message String
 }
 
 
 bool MessageEncoder::destructDataBlock() {
 
   // check if real length matches length from header
-  if (Decoding_Data.DataBlock.DataBlock_String.length() != Decoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength) {
+  if (Decoding_Data.DataBlock.DataBlock_String.length() != Decoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength - 32769) {  // 32769 to avoid \0 bytes in Message String
     return false;
   }
 
