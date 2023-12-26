@@ -11,7 +11,7 @@
 
 
 void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey) {
-  AES.setup(EnctyptionKey, '!');
+  AES.setup(EnctyptionKey);
   _SenderID = SenderID;
   _maxEncodedLength = maxMessageSize;
 }
