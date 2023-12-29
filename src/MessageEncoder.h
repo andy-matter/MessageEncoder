@@ -6,20 +6,20 @@
 
 typedef struct {
   uint8_t MessageID;
-  bool Encrypt;
-  bool needACK;
-  bool isACK;
-  String Data;
+  bool Encrypt = false;
+  bool needACK = false;
+  bool isACK = false;
+  String Data = "";
 } encoding_inputs;
 
 
 typedef struct {
   uint8_t SenderID;
   uint8_t MessageID;
-  bool wasEncrypted;
-  bool needACK;
-  bool isACK;
-  String Data;
+  bool wasEncrypted = false;
+  bool needACK = false;
+  bool isACK = false;
+  String Data = "";
 } decoding_outputs;
 
 

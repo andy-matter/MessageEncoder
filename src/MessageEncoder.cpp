@@ -37,10 +37,12 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
   Encoding_Data.CompleteMessage = "";
   Encoding_Data.CompleteMessage += char(2);
   Encoding_Data.CompleteMessage += char(13);
+  Encoding_Data.CompleteMessage += char(2);
   Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 6 Bytes
   Encoding_Data.CompleteMessage += Encoding_Data.DataBlock.DataBlock_String;  // min 16 Bytes
   Encoding_Data.CompleteMessage += char(3);
   Encoding_Data.CompleteMessage += char(13);
+  Encoding_Data.CompleteMessage += char(3);
 
 
   *Message = "";
@@ -286,20 +288,20 @@ bool MessageEncoder::splitMessage() {
 
 
 
-  for (int i = 0;  i < Char13Size;  i++) {  // Surch for char(2) char(13) combination (before header)
+  for (int i = 0;  i < Char13Size;  i++) {  // Surch for char(2) char(13) char(2) combination (before header)
 
-    if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(2) ) {
-      HeaderStartIndex = Char13Pos[i] + 1;
-      HeaderEndIndex = Char13Pos[i] + 7;
-      DataStartIndex = Char13Pos[i] + 7;
+    if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(2)  and  Decoding_Data.CompleteMessage.charAt(Char13Pos[i] + 1) == char(2) ) {
+      HeaderStartIndex = Char13Pos[i] + 2;
+      HeaderEndIndex = Char13Pos[i] + 8;
+      DataStartIndex = Char13Pos[i] + 8;
       break;
     }
   }
 
   
-  for (int i = lastUsedArrayIndex;  i >= 0;  i--) {  // Surch for char(3) char(13) combination (after data)
+  for (int i = lastUsedArrayIndex;  i >= 0;  i--) {  // Surch for char(3) char(13) char(3) combination (after data)
 
-    if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(3) ) {
+    if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(3)  and  Decoding_Data.CompleteMessage.charAt(Char13Pos[i] + 1) == char(3)) {
       DataEndIndex = Char13Pos[i] - 1;
       break;
     }
