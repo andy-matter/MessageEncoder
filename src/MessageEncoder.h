@@ -37,7 +37,6 @@ public:
 
 private:
 
-  #pragma region data_structure
 
   union flag_union {
     char Flag_Byte;
@@ -112,7 +111,8 @@ private:
     String CompleteMessage;
   };
 
-  #pragma endregion data_structure
+  
+  
 
 
   message_components Encoding_Data;
