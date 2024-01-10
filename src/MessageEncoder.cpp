@@ -11,7 +11,7 @@
 
 
 void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey) {
-  AES.setup(EnctyptionKey);
+  Encrypter.setup(EnctyptionKey, 32);
   _SenderID = SenderID;
   _maxEncodedLength = maxMessageSize;
 }
@@ -210,7 +210,7 @@ void MessageEncoder::constructDataBlock() {
 
   // Encrypt if needed
   if (Encoding_Data.HeaderBlock.Components.Flag.Encrypted) {
-    AES.EncryptString(Encoding_Data.DataBlock.Components.ClearText, Encoding_Data.DataBlock.DataBlock_String);
+    Encrypter.EncryptString(Encoding_Data.DataBlock.Components.ClearText, Encoding_Data.DataBlock.DataBlock_String, Encoding_Data.DataBlock.Components.ClearText.length());
   }
   else {
     Encoding_Data.DataBlock.DataBlock_String = Encoding_Data.DataBlock.Components.ClearText;
@@ -231,7 +231,7 @@ bool MessageEncoder::destructDataBlock() {
 
   // Decrypt if needed
   if (Decoding_Data.HeaderBlock.Components.Flag.Encrypted) {
-    AES.DecryptString(Decoding_Data.DataBlock.DataBlock_String, Decoding_Data.DataBlock.Components.ClearText);
+    Encrypter.DecryptString(Decoding_Data.DataBlock.DataBlock_String, Decoding_Data.DataBlock.Components.ClearText, Decoding_Data.DataBlock.DataBlock_String.length());
   }
   else {
     Decoding_Data.DataBlock.Components.ClearText = Decoding_Data.DataBlock.DataBlock_String;

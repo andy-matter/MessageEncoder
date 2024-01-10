@@ -119,7 +119,7 @@ private:
   message_components Decoding_Data;
 
 
-  StringEncryption AES;
+  StringEncryption_ChaCha Encrypter;
   uint8_t _SenderID;
   uint16_t _maxEncodedLength;
 
