@@ -25,17 +25,35 @@ typedef struct {
 
 
 
+
 class MessageEncoder {
 public:
 
+/** @param SenderID: ...
+  * @param maxMessageSize: ...
+  * @param EnctyptionKey: ...
+  */
   void setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
   
+
+/** @param Input: ...
+  * @param Message: ...
+  * @param return: ...
+  */
   bool Encode(encoding_inputs* Input, String* Message);
+
+
+/** @param Message: ...
+  * @param Output: ...
+  * @param return: ...
+  */
   bool Decode(String* Message, decoding_outputs* Output);
 
 
 
 private:
+
+  #pragma region data_structure
 
 
   union flag_union {
@@ -104,16 +122,15 @@ private:
 
 
 
-
   struct message_components {
     header_block HeaderBlock;
     data_block DataBlock;
     String CompleteMessage;
   };
 
-  
-  
 
+  #pragma endregion data_structure
+  
 
   message_components Encoding_Data;
   message_components Decoding_Data;
@@ -122,8 +139,6 @@ private:
   StringEncryption_ChaCha Encrypter;
   uint8_t _SenderID;
   uint16_t _maxEncodedLength;
-
-  int emptyMessageSize = 32;  // 32 byte long when empty and encryption enabled
 
 
   void constructHeaderBlock();
@@ -139,5 +154,5 @@ private:
 
 
   bool splitMessage();
-  byte findCharLocations(String& inp, char findIt, int (&resultList)[50]);
+  byte findCharLocations(String& inp, char findIt, unsigned short (&resultList)[40]);
 };

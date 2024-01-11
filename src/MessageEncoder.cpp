@@ -257,7 +257,7 @@ bool MessageEncoder::destructDataBlock() {
 
 
 
-byte MessageEncoder::findCharLocations(String& inp, char findIt, int (&resultList)[50]) {
+byte MessageEncoder::findCharLocations(String& inp, char findIt, unsigned short (&resultList)[40]) {
 
     int InputSize = inp.length();
     int resultIndex = 0;
@@ -283,7 +283,7 @@ bool MessageEncoder::splitMessage() {
 
   // find all char(13)
   const int Char13Size = 50;
-  int Char13Pos[Char13Size] = {};
+  unsigned short Char13Pos[Char13Size] = {};
   byte lastUsedArrayIndex = findCharLocations(Decoding_Data.CompleteMessage, char(13), Char13Pos);
 
 
