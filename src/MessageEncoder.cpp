@@ -282,7 +282,7 @@ bool MessageEncoder::splitMessage() {
   int DataEndIndex = 0;
 
   // find all char(13)
-  const int Char13Size = 50;
+  const int Char13Size = 40;
   unsigned short Char13Pos[Char13Size] = {};
   byte lastUsedArrayIndex = findCharLocations(Decoding_Data.CompleteMessage, char(13), Char13Pos);
 
