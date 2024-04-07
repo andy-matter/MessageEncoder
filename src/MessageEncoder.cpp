@@ -10,16 +10,21 @@
 
 
 
-void MessageEncoder::setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey) {
+void MessageEncoder::setEncoding (uint8_t NetworkID, uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey) {
   Encrypter.setup(EnctyptionKey, 32);
+  _NetworkID = NetworkID;
   _SenderID = SenderID;
   _maxEncodedLength = maxMessageSize;
 }
 
 
+
+
+
 bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 
   // Copy input to encoding_data
+  Encoding_Data.HeaderBlock.Components.NetworkID = _NetworkID + 1;
   Encoding_Data.HeaderBlock.Components.SenderID = _SenderID + 1;  // to avoid \0 bytes
   Encoding_Data.HeaderBlock.Components.MessageID = Input->MessageID + 1;
   Encoding_Data.HeaderBlock.Components.Flag.Encrypted = Input->Encrypt;
@@ -38,7 +43,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
   Encoding_Data.CompleteMessage += char(2);
   Encoding_Data.CompleteMessage += char(13);
   Encoding_Data.CompleteMessage += char(2);
-  Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 6 Bytes
+  Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 7 Bytes
   Encoding_Data.CompleteMessage += Encoding_Data.DataBlock.DataBlock_String;  // min 16 Bytes
   Encoding_Data.CompleteMessage += char(3);
   Encoding_Data.CompleteMessage += char(13);
@@ -58,6 +63,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 }
 
 
+
 bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
 
   Decoding_Data.CompleteMessage = *Message;
@@ -73,7 +79,13 @@ bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
   if (!destructDataBlock()) {
     return false;
   }
+
+  if (_NetworkID != Decoding_Data.HeaderBlock.Components.NetworkID - 1) {
+    return false;
+  }
   
+  
+  Output->NetworkID = Decoding_Data.HeaderBlock.Components.NetworkID - 1;
   Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID - 1;
   Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID - 1;
   Output->wasEncrypted = Decoding_Data.HeaderBlock.Components.Flag.Encrypted;
@@ -110,6 +122,7 @@ uint8_t MessageEncoder::CRC8(const String &input) {
 }
 
 
+
 uint16_t MessageEncoder::CRC16(const String &input) {
 
   uint16_t crc = 0xFFFF; // Initial value, can be modified based on your requirements
@@ -133,21 +146,23 @@ uint16_t MessageEncoder::CRC16(const String &input) {
 
 
 
+
 void MessageEncoder::constructHeaderBlock() {
 
   Encoding_Data.HeaderBlock.Components.Flag.Bit7 = true; // to avoid the flag byte from beeing \0
 
   // Single bytes to Byte-array
-  uint8_t HeaderBytes[5] = { };
-  HeaderBytes[0] = Encoding_Data.HeaderBlock.Components.SenderID;
-  HeaderBytes[1] = Encoding_Data.HeaderBlock.Components.MessageID;
-  HeaderBytes[2] = Encoding_Data.HeaderBlock.Components.Flag.Flag_Byte;
-  HeaderBytes[3] = Encoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte;
-  HeaderBytes[4] = Encoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte;
+  uint8_t HeaderBytes[6] = { };
+  HeaderBytes[0] = Encoding_Data.HeaderBlock.Components.NetworkID;
+  HeaderBytes[1] = Encoding_Data.HeaderBlock.Components.SenderID;
+  HeaderBytes[2] = Encoding_Data.HeaderBlock.Components.MessageID;
+  HeaderBytes[3] = Encoding_Data.HeaderBlock.Components.Flag.Flag_Byte;
+  HeaderBytes[4] = Encoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte;
+  HeaderBytes[5] = Encoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte;
 
   // Byte-array to string
   String HeaderString = "";
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 6; i++) {
       HeaderString += (char)HeaderBytes[i];
   }
 
@@ -162,15 +177,16 @@ void MessageEncoder::constructHeaderBlock() {
 }
 
 
+
 bool MessageEncoder::destructHeaderBlock() {
 
-  if (Decoding_Data.HeaderBlock.HeaderBlock_String.length() != 6) {  // Check if header is 6 bytes long
+  if (Decoding_Data.HeaderBlock.HeaderBlock_String.length() != 7) {  // Check if header is 7 bytes long
     return false;
   }
 
-  Decoding_Data.HeaderBlock.Components.HeaderCRC = Decoding_Data.HeaderBlock.HeaderBlock_String[5];  // Get CRC from header
+  Decoding_Data.HeaderBlock.Components.HeaderCRC = Decoding_Data.HeaderBlock.HeaderBlock_String[6];  // Get CRC from header
 
-  Decoding_Data.HeaderBlock.HeaderBlock_String.remove(5);  // Remove CRC from header
+  Decoding_Data.HeaderBlock.HeaderBlock_String.remove(6);  // Remove CRC from header
 
   if (Decoding_Data.HeaderBlock.Components.HeaderCRC != CRC8(Decoding_Data.HeaderBlock.HeaderBlock_String)) {  // Check received CRC against calculated CRC
     return false;
@@ -179,21 +195,23 @@ bool MessageEncoder::destructHeaderBlock() {
 
 
    //String to byte array
-  uint8_t Bytes[5];
-  for (int i = 0; i < 5; i++) {    
+  uint8_t Bytes[6];
+  for (int i = 0; i < 6; i++) {    
     Bytes[i] = (uint8_t)Decoding_Data.HeaderBlock.HeaderBlock_String.charAt(i);
   }
 
 
-  Decoding_Data.HeaderBlock.Components.SenderID = Bytes[0];
-  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[1];
-  Decoding_Data.HeaderBlock.Components.Flag.Flag_Byte = Bytes[2];
-  Decoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte = Bytes[3];
-  Decoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte = Bytes[4];
+  Decoding_Data.HeaderBlock.Components.NetworkID = Bytes[0];
+  Decoding_Data.HeaderBlock.Components.SenderID = Bytes[1];
+  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[2];
+  Decoding_Data.HeaderBlock.Components.Flag.Flag_Byte = Bytes[3];
+  Decoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte = Bytes[4];
+  Decoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte = Bytes[5];
 
 
   return true;
 }
+
 
 
 
@@ -219,6 +237,7 @@ void MessageEncoder::constructDataBlock() {
 
   Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength = Encoding_Data.DataBlock.DataBlock_String.length() + 32769;  // 32769 to avoid \0 bytes in Message String
 }
+
 
 
 bool MessageEncoder::destructDataBlock() {
@@ -257,6 +276,7 @@ bool MessageEncoder::destructDataBlock() {
 
 
 
+
 byte MessageEncoder::findCharLocations(String& inp, char findIt, unsigned short (&resultList)[40]) {
 
     int InputSize = inp.length();
@@ -272,6 +292,7 @@ byte MessageEncoder::findCharLocations(String& inp, char findIt, unsigned short 
 
     return resultIndex;
 }
+
 
 
 bool MessageEncoder::splitMessage() {
@@ -292,8 +313,8 @@ bool MessageEncoder::splitMessage() {
 
     if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(2)  and  Decoding_Data.CompleteMessage.charAt(Char13Pos[i] + 1) == char(2) ) {
       HeaderStartIndex = Char13Pos[i] + 2;
-      HeaderEndIndex = Char13Pos[i] + 8;
-      DataStartIndex = Char13Pos[i] + 8;
+      HeaderEndIndex = Char13Pos[i] + 9;
+      DataStartIndex = Char13Pos[i] + 9;
       break;
     }
   }

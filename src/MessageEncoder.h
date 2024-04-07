@@ -14,6 +14,7 @@ typedef struct {
 
 
 typedef struct {
+  uint8_t NetworkID;
   uint8_t SenderID;
   uint8_t MessageID;
   bool wasEncrypted = false;
@@ -29,11 +30,12 @@ typedef struct {
 class MessageEncoder {
 public:
 
-/** @param SenderID: ...
+/** @param NetworkID: ...
+  * @param SenderID: ...
   * @param maxMessageSize: ...
   * @param EnctyptionKey: ...
   */
-  void setEncoding (uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
+  void setEncoding (uint8_t NetworkID, uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
   
 
 /** @param Input: ...
@@ -48,6 +50,7 @@ public:
   * @param return: ...
   */
   bool Decode(String* Message, decoding_outputs* Output);
+
 
 
 
@@ -94,6 +97,7 @@ private:
 
 
   struct header_components {
+    uint8_t NetworkID;
     uint8_t SenderID;
     uint8_t MessageID;
     flag_union Flag;
@@ -132,11 +136,13 @@ private:
   #pragma endregion data_structure
   
 
+
   message_components Encoding_Data;
   message_components Decoding_Data;
 
 
   StringEncryption_ChaCha Encrypter;
+  uint8_t _NetworkID;
   uint8_t _SenderID;
   uint16_t _maxEncodedLength;
 
