@@ -5,6 +5,7 @@
 
 
 typedef struct {
+  uint8_t ReceiverID;
   uint8_t MessageID;
   bool Encrypt = false;
   bool needACK = false;
@@ -14,7 +15,6 @@ typedef struct {
 
 
 typedef struct {
-  uint8_t NetworkID;
   uint8_t SenderID;
   uint8_t MessageID;
   bool wasEncrypted = false;
@@ -99,6 +99,7 @@ private:
   struct header_components {
     uint8_t NetworkID;
     uint8_t SenderID;
+    uint8_t ReceiverID;
     uint8_t MessageID;
     flag_union Flag;
     datablock_length_union DataBlockLength;
@@ -140,7 +141,7 @@ private:
   message_components Encoding_Data;
   message_components Decoding_Data;
 
-
+  const uint8_t _HeaderSize = 8;
   StringEncryption_ChaCha Encrypter;
   uint8_t _NetworkID;
   uint8_t _SenderID;

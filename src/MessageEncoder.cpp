@@ -26,6 +26,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
   // Copy input to encoding_data
   Encoding_Data.HeaderBlock.Components.NetworkID = _NetworkID + 1;
   Encoding_Data.HeaderBlock.Components.SenderID = _SenderID + 1;  // to avoid \0 bytes
+  Encoding_Data.HeaderBlock.Components.ReceiverID = Input->ReceiverID + 1;
   Encoding_Data.HeaderBlock.Components.MessageID = Input->MessageID + 1;
   Encoding_Data.HeaderBlock.Components.Flag.Encrypted = Input->Encrypt;
   Encoding_Data.HeaderBlock.Components.Flag.needACK = Input->needACK;
@@ -43,7 +44,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
   Encoding_Data.CompleteMessage += char(2);
   Encoding_Data.CompleteMessage += char(13);
   Encoding_Data.CompleteMessage += char(2);
-  Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 7 Bytes
+  Encoding_Data.CompleteMessage += Encoding_Data.HeaderBlock.HeaderBlock_String;  // 8 Bytes
   Encoding_Data.CompleteMessage += Encoding_Data.DataBlock.DataBlock_String;  // min 16 Bytes
   Encoding_Data.CompleteMessage += char(3);
   Encoding_Data.CompleteMessage += char(13);
@@ -53,7 +54,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
   *Message = "";
 
   // Check max message length
-  if ((Encoding_Data.HeaderBlock.Components.DataBlockLength.DataBlockLength - 32769) + 10  >  _maxEncodedLength) {
+  if (Encoding_Data.CompleteMessage.length()  >  _maxEncodedLength) {
     return false;
   }
 
@@ -68,24 +69,21 @@ bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
 
   Decoding_Data.CompleteMessage = *Message;
 
-  if (!splitMessage()) {
+  if (!splitMessage())  {return false;}
+
+  if (!destructHeaderBlock())  {return false;}
+
+  if (!destructDataBlock())  {return false;}
+
+  if (_NetworkID != Decoding_Data.HeaderBlock.Components.NetworkID-1) {
     return false;
   }
 
-  if (!destructHeaderBlock()) {
-    return false;
-  }
-
-  if (!destructDataBlock()) {
-    return false;
-  }
-
-  if (_NetworkID != Decoding_Data.HeaderBlock.Components.NetworkID - 1) {
+  if (Decoding_Data.HeaderBlock.Components.ReceiverID-1  !=  0    ||    Decoding_Data.HeaderBlock.Components.ReceiverID-1  !=  _SenderID) {
     return false;
   }
   
   
-  Output->NetworkID = Decoding_Data.HeaderBlock.Components.NetworkID - 1;
   Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID - 1;
   Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID - 1;
   Output->wasEncrypted = Decoding_Data.HeaderBlock.Components.Flag.Encrypted;
@@ -151,18 +149,23 @@ void MessageEncoder::constructHeaderBlock() {
 
   Encoding_Data.HeaderBlock.Components.Flag.Bit7 = true; // to avoid the flag byte from beeing \0
 
+  if (Encoding_Data.HeaderBlock.Components.ReceiverID-1 == 0) {  // ACK request is not allowed for broadcast messages (due to network congestion when all receiver want to send ack at the  same time)
+    Encoding_Data.HeaderBlock.Components.Flag.needACK = false;
+  }
+
   // Single bytes to Byte-array
-  uint8_t HeaderBytes[6] = { };
+  uint8_t HeaderBytes[_HeaderSize-1] = { };
   HeaderBytes[0] = Encoding_Data.HeaderBlock.Components.NetworkID;
   HeaderBytes[1] = Encoding_Data.HeaderBlock.Components.SenderID;
-  HeaderBytes[2] = Encoding_Data.HeaderBlock.Components.MessageID;
-  HeaderBytes[3] = Encoding_Data.HeaderBlock.Components.Flag.Flag_Byte;
-  HeaderBytes[4] = Encoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte;
-  HeaderBytes[5] = Encoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte;
+  HeaderBytes[2] = Encoding_Data.HeaderBlock.Components.ReceiverID;
+  HeaderBytes[3] = Encoding_Data.HeaderBlock.Components.MessageID;
+  HeaderBytes[4] = Encoding_Data.HeaderBlock.Components.Flag.Flag_Byte;
+  HeaderBytes[5] = Encoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte;
+  HeaderBytes[6] = Encoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte;
 
   // Byte-array to string
   String HeaderString = "";
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < _HeaderSize-1; i++) {
       HeaderString += (char)HeaderBytes[i];
   }
 
@@ -180,13 +183,13 @@ void MessageEncoder::constructHeaderBlock() {
 
 bool MessageEncoder::destructHeaderBlock() {
 
-  if (Decoding_Data.HeaderBlock.HeaderBlock_String.length() != 7) {  // Check if header is 7 bytes long
+  if (Decoding_Data.HeaderBlock.HeaderBlock_String.length() != _HeaderSize) {  // Check if header is expectet length
     return false;
   }
 
-  Decoding_Data.HeaderBlock.Components.HeaderCRC = Decoding_Data.HeaderBlock.HeaderBlock_String[6];  // Get CRC from header
+  Decoding_Data.HeaderBlock.Components.HeaderCRC = Decoding_Data.HeaderBlock.HeaderBlock_String[_HeaderSize-1];  // Get CRC from header
 
-  Decoding_Data.HeaderBlock.HeaderBlock_String.remove(6);  // Remove CRC from header
+  Decoding_Data.HeaderBlock.HeaderBlock_String.remove(_HeaderSize-1);  // Remove CRC from header
 
   if (Decoding_Data.HeaderBlock.Components.HeaderCRC != CRC8(Decoding_Data.HeaderBlock.HeaderBlock_String)) {  // Check received CRC against calculated CRC
     return false;
@@ -194,20 +197,20 @@ bool MessageEncoder::destructHeaderBlock() {
  
 
 
-   //String to byte array
-  uint8_t Bytes[6];
-  for (int i = 0; i < 6; i++) {    
+  //String to byte array
+  uint8_t Bytes[_HeaderSize-1];
+  for (int i = 0; i < _HeaderSize-1; i++) {    
     Bytes[i] = (uint8_t)Decoding_Data.HeaderBlock.HeaderBlock_String.charAt(i);
   }
 
 
   Decoding_Data.HeaderBlock.Components.NetworkID = Bytes[0];
   Decoding_Data.HeaderBlock.Components.SenderID = Bytes[1];
-  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[2];
-  Decoding_Data.HeaderBlock.Components.Flag.Flag_Byte = Bytes[3];
-  Decoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte = Bytes[4];
-  Decoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte = Bytes[5];
-
+  Decoding_Data.HeaderBlock.Components.ReceiverID = Bytes[2];
+  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[3];
+  Decoding_Data.HeaderBlock.Components.Flag.Flag_Byte = Bytes[4];
+  Decoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte = Bytes[5];
+  Decoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte = Bytes[6];
 
   return true;
 }
@@ -313,8 +316,8 @@ bool MessageEncoder::splitMessage() {
 
     if (Decoding_Data.CompleteMessage.charAt(Char13Pos[i] - 1) == char(2)  and  Decoding_Data.CompleteMessage.charAt(Char13Pos[i] + 1) == char(2) ) {
       HeaderStartIndex = Char13Pos[i] + 2;
-      HeaderEndIndex = Char13Pos[i] + 9;
-      DataStartIndex = Char13Pos[i] + 9;
+      HeaderEndIndex = Char13Pos[i] + 2 + _HeaderSize;
+      DataStartIndex = Char13Pos[i] + 2 + _HeaderSize;
       break;
     }
   }
