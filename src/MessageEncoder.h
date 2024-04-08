@@ -4,32 +4,30 @@
 
 
 
-typedef struct {
-  uint8_t ReceiverID;
-  uint8_t MessageID;
-  bool Encrypt = false;
-  bool needACK = false;
-  bool isACK = false;
-  String Data = "";
-} encoding_inputs;
-
-
-typedef struct {
-  uint8_t SenderID;
-  uint8_t MessageID;
-  bool wasEncrypted = false;
-  bool needACK = false;
-  bool isACK = false;
-  String Data = "";
-} decoding_outputs;
-
-
-
-
-
-
 class MessageEncoder {
 public:
+
+  typedef struct {
+    uint8_t ReceiverID;
+    uint8_t MessageID;
+    bool Encrypt = false;
+    bool needACK = false;
+    bool isACK = false;
+    String Data = "";
+  } enc_in;
+
+
+  typedef struct {
+    uint8_t SenderID;
+    uint8_t MessageID;
+    bool wasEncrypted = false;
+    bool needACK = false;
+    bool isACK = false;
+    String Data = "";
+  } dec_out;
+
+
+
 
 /** @param NetworkID: The ID of the communication network, which shares the same Key
   * @param SenderID: The DeviceID of the local node
@@ -39,18 +37,19 @@ public:
   void setEncoding (uint8_t NetworkID, uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
   
 
-/** @param Input: The inputs, that define the finished message
+/** @param Input: The inputs, that define the finished message (using MessageEncoder::enc_in)
   * @param Message: The finished and if needed encrypted message as a String
   * @param return: True when successful and false when finished message was to long
   */
-  bool Encode(encoding_inputs* Input, String* Message);
+  bool Encode(enc_in* Input, String* Message);
 
 
 /** @param Message: The received message as a String
-  * @param Output: The outputs, that made up the Message
+  * @param Output: The outputs, that made up the Message (using MessageEncoder::dec_out)
   * @param return: True when successful and false when message was not correct
   */
-  bool Decode(String* Message, decoding_outputs* Output);
+  bool Decode(String* Message, dec_out* Output);
+
 
 
 

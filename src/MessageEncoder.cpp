@@ -21,7 +21,7 @@ void MessageEncoder::setEncoding (uint8_t NetworkID, uint8_t SenderID, uint16_t 
 
 
 
-bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
+bool MessageEncoder::Encode(enc_in* Input, String* Message) {
 
   // Copy input to encoding_data
   Encoding_Data.HeaderBlock.Components.NetworkID = _NetworkID + 1;
@@ -65,7 +65,7 @@ bool MessageEncoder::Encode(encoding_inputs* Input, String* Message) {
 
 
 
-bool MessageEncoder::Decode(String* Message, decoding_outputs* Output) {
+bool MessageEncoder::Decode(String* Message, dec_out* Output) {
 
   Decoding_Data.CompleteMessage = *Message;
 
