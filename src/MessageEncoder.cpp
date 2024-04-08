@@ -75,17 +75,15 @@ bool MessageEncoder::Decode(String* Message, dec_out* Output) {
 
   if (!destructDataBlock())  {return false;}
 
-  if (_NetworkID != Decoding_Data.HeaderBlock.Components.NetworkID-1) {
-    return false;
-  }
+  if (_NetworkID != Decoding_Data.HeaderBlock.Components.NetworkID) {return false;}
 
-  if (Decoding_Data.HeaderBlock.Components.ReceiverID-1  !=  0    ||    Decoding_Data.HeaderBlock.Components.ReceiverID-1  !=  _SenderID) {
+  if (Decoding_Data.HeaderBlock.Components.ReceiverID  !=  0    &&    Decoding_Data.HeaderBlock.Components.ReceiverID  !=  _SenderID) {
     return false;
   }
   
   
-  Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID - 1;
-  Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID - 1;
+  Output->SenderID = Decoding_Data.HeaderBlock.Components.SenderID;
+  Output->MessageID = Decoding_Data.HeaderBlock.Components.MessageID;
   Output->wasEncrypted = Decoding_Data.HeaderBlock.Components.Flag.Encrypted;
   Output->needACK = Decoding_Data.HeaderBlock.Components.Flag.needACK;
   Output->isACK = Decoding_Data.HeaderBlock.Components.Flag.isACK;
@@ -204,10 +202,10 @@ bool MessageEncoder::destructHeaderBlock() {
   }
 
 
-  Decoding_Data.HeaderBlock.Components.NetworkID = Bytes[0];
-  Decoding_Data.HeaderBlock.Components.SenderID = Bytes[1];
-  Decoding_Data.HeaderBlock.Components.ReceiverID = Bytes[2];
-  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[3];
+  Decoding_Data.HeaderBlock.Components.NetworkID = Bytes[0] - 1;
+  Decoding_Data.HeaderBlock.Components.SenderID = Bytes[1] - 1;
+  Decoding_Data.HeaderBlock.Components.ReceiverID = Bytes[2] - 1;
+  Decoding_Data.HeaderBlock.Components.MessageID = Bytes[3] - 1;
   Decoding_Data.HeaderBlock.Components.Flag.Flag_Byte = Bytes[4];
   Decoding_Data.HeaderBlock.Components.DataBlockLength.LowerDBL_Byte = Bytes[5];
   Decoding_Data.HeaderBlock.Components.DataBlockLength.UpperDBL_Byte = Bytes[6];
