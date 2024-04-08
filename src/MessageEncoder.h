@@ -27,29 +27,31 @@ typedef struct {
 
 
 
+
 class MessageEncoder {
 public:
 
-/** @param NetworkID: ...
-  * @param SenderID: ...
-  * @param maxMessageSize: ...
-  * @param EnctyptionKey: ...
+/** @param NetworkID: The ID of the communication network, which shares the same Key
+  * @param SenderID: The DeviceID of the local node
+  * @param maxMessageSize: The maximum allowed size of the finished message
+  * @param EnctyptionKey: The Encryption-Key as a byte[32]
   */
   void setEncoding (uint8_t NetworkID, uint8_t SenderID, uint16_t maxMessageSize, const uint8_t *EnctyptionKey);
   
 
-/** @param Input: ...
-  * @param Message: ...
-  * @param return: ...
+/** @param Input: The inputs, that define the finished message
+  * @param Message: The finished and if needed encrypted message as a String
+  * @param return: True when successful and false when finished message was to long
   */
   bool Encode(encoding_inputs* Input, String* Message);
 
 
-/** @param Message: ...
-  * @param Output: ...
-  * @param return: ...
+/** @param Message: The received message as a String
+  * @param Output: The outputs, that made up the Message
+  * @param return: True when successful and false when message was not correct
   */
   bool Decode(String* Message, decoding_outputs* Output);
+
 
 
 
@@ -146,6 +148,7 @@ private:
   uint8_t _NetworkID;
   uint8_t _SenderID;
   uint16_t _maxEncodedLength;
+
 
 
   void constructHeaderBlock();
