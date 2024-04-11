@@ -69,6 +69,15 @@ bool MessageEncoder::Decode(String* Message, dec_out* Output) {
 
   Decoding_Data.CompleteMessage = *Message;
 
+  // Reset Outputs
+  Output->SenderID = 0;
+  Output->MessageID = 0;
+  Output->wasEncrypted = false;
+  Output->needACK = false;
+  Output->isACK = false;
+  Output->Data = "";
+
+
   if (!splitMessage())  {return false;}
 
   if (!destructHeaderBlock())  {return false;}
@@ -122,6 +131,7 @@ uint8_t MessageEncoder::CRC8(const String &input) {
 uint16_t MessageEncoder::CRC16(const String &input) {
 
   uint16_t crc = 0xFFFF; // Initial value, can be modified based on your requirements
+  data_crc_union CRC_Union;
 
   for (size_t i = 0; i < input.length(); ++i) {
     crc ^= (uint16_t)input[i] << 8;
@@ -135,8 +145,19 @@ uint16_t MessageEncoder::CRC16(const String &input) {
     }
   }
 
-  // Ensure the CRC value is not 0
-  return (crc == 0) ? 0x0001 : crc;
+
+  // Ensure that both crc bytes are >0
+  CRC_Union.DataCRC = crc;
+
+  if (CRC_Union.LowerCRC_Byte == 0) {
+    CRC_Union.LowerCRC_Byte = 1;
+  }
+
+  if (CRC_Union.UpperCRC_Byte == 0) {
+    CRC_Union.UpperCRC_Byte = 1;
+  }
+
+  return CRC_Union.DataCRC;
 }
 
 
