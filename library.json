@@ -1,8 +1,8 @@
 {
   "name": "MessageEncoder",
   "version": "0.1.0",
-  "description": "NON",
-  "keywords": "Message, Protocol",
+  "description": "For converting Arduino Strings to Encrypted messages with fully fledged Header and CRC for Header and Data",
+  "keywords": "Message, Protocol, Encoder",
   "repository":
   {
     "type": "git",
