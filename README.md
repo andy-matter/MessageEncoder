@@ -1,1 +1,1 @@
-Library hopefully self explanatory through public: space in Header-file ;)
+The Library is hopefully self-explanatory through public: space in Header-file ;)
