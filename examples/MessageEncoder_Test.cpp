@@ -1,3 +1,9 @@
+/* 
+Info: 
+  - It is not advised to use this library on divices with extremely limited RAM size (eg. ATmega328p or smaller)
+  - Recommended RAM size is >16kB
+  - If the MCU does not have a hardware RNG it is advised to set the randomSeed using the least significant digit of an analog input
+*/
 
 #include <Arduino.h>
 #include <MessageEncoder.h>
@@ -21,7 +27,7 @@ void setup() {
   MsgDec.setEncoding(2, 69, 1000, Key);
 
   Serial.begin(115200);
-  delay(2500);
+  delay(500);
 }
 
 
@@ -46,9 +52,10 @@ void loop() {
 
 
   if (!Enc_Input.Data.equals(Dec_Output.Data)) {    // Compare the data before and after encoding/decoding
-    Serial.println(Enc_Input.Data);
-    Serial.println(Dec_Output.Data);
     Serial.println("Test Failed!");
+  }
+  else {
+    Serial.println("Test Passed!");
   }
 
   while(1);   // Freeze the loop
